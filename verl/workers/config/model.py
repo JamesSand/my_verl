@@ -75,6 +75,7 @@ class HFModelConfig(BaseConfig):
     use_remove_padding: bool = False
 
     # lora related. We may setup a separate config later
+    lora_init: Optional[str] = None
     lora_rank: int = 0
     lora_alpha: int = 16
     target_modules: Optional[str] = "all-linear"

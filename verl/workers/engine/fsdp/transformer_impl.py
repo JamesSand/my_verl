@@ -21,6 +21,7 @@ import os
 import warnings
 from contextlib import nullcontext
 from typing import Callable
+import inspect
 
 import torch
 import torch.distributed
@@ -250,6 +251,16 @@ class FSDPEngine(BaseEngine):
             "exclude_modules": convert_to_regular_types(self.model_config.exclude_modules),
             "bias": "none",
         }
+        
+        # add pissa config if need
+        lora_init = getattr(self.model_config, "lora_init", None)
+        if lora_init:
+            params = inspect.signature(LoraConfig.__init__).parameters
+            if "init_lora_weights" in params:
+                lora_config["init_lora_weights"] = lora_init
+            elif "lora_init" in params:
+                lora_config["lora_init"] = lora_init
+        
         module = get_peft_model(module, LoraConfig(**lora_config))
         return module
 

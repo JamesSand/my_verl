@@ -15,7 +15,8 @@ total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
 
 
 WANDB_PROJECT=grpo-gsm8k
-WANDB_EXP=qwen2.5-0.5b-bsz64_2-prompt512-resp1024-lora32
+WANDB_EXP=qwen2.5-0.5b-bsz64_2-prompt512-resp1024-pissa
+
 MODEL_PATH=/ssd2/zhizhou/workspace/verl/models/Qwen2.5-0.5B-Instruct
 
 BASE_DIR=/ssd2/zhizhou/workspace/verl
@@ -34,6 +35,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.path=$MODEL_PATH  \
     actor_rollout_ref.model.use_shm=True  \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
+    actor_rollout_ref.model.lora_init=pissa_niter_4 \
     actor_rollout_ref.model.lora_rank=32 \
     actor_rollout_ref.model.lora_alpha=32 \
     actor_rollout_ref.model.target_modules=all-linear \
