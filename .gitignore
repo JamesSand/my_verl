@@ -1,4 +1,9 @@
 
+*.whl*
+
+models/
+data/
+
 **/*.pt
 **/checkpoints
 **/wget-log
