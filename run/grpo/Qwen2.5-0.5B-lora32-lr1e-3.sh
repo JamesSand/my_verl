@@ -3,7 +3,14 @@ set -x
 # If you are using vllm<=0.6.3, you might need to set the following environment variable to avoid bugs:
 # export VLLM_ATTENTION_BACKEND=XFORMERS
 
-export CUDA_VISIBLE_DEVICES=2,3
+# this training setting is from 
+# https://github.com/thelongestusernameofall/verl-data/blob/experiments/gsm8k/Qwen2.5-0.5B-bsz64_2-prompt512-resp1024-lorarank32-score0.543.log
+
+export CUDA_VISIBLE_DEVICES=0,1
+
+# pending for PID finish
+WAIT_PID=1556398
+tail --pid=$WAIT_PID -f /dev/null
 
 nproc_per_gpu=32
 nnodes=1
@@ -13,10 +20,10 @@ total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
 # Zhizhou: I cannot set mini batch size to 64, that is too large. Need set it small.
 # mini_batch_size=$(( total_procs ))
 
+LR=1e-3
 
 WANDB_PROJECT=grpo-gsm8k
-WANDB_EXP=qwen2.5-0.5b-bsz64_2-prompt512-resp1024-pissa
-
+WANDB_EXP=qwen2.5-0.5b-lora32-lr${LR}
 MODEL_PATH=/ssd2/zhizhou/workspace/verl/models/Qwen2.5-0.5B-Instruct
 
 BASE_DIR=/ssd2/zhizhou/workspace/verl
@@ -35,7 +42,6 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.path=$MODEL_PATH  \
     actor_rollout_ref.model.use_shm=True  \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
-    actor_rollout_ref.model.lora_init=pissa_niter_4 \
     actor_rollout_ref.model.lora_rank=32 \
     actor_rollout_ref.model.lora_alpha=32 \
     actor_rollout_ref.model.target_modules=all-linear \
