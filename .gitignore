@@ -4,6 +4,16 @@
 models/
 data/
 
+checkpoints_fsdp_merged/
+checkpoints_lora_merged/
+checkpoints_merged/
+checkpoints_svd_decompose/
+checkpoints_svd_results/
+
+temp/
+
+svd_results/
+
 **/*.pt
 **/checkpoints
 **/wget-log

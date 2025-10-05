@@ -5,10 +5,6 @@ set -x
 
 export CUDA_VISIBLE_DEVICES=2,3
 
-# pending for PID finish
-WAIT_PID=1571054
-tail --pid=$WAIT_PID -f /dev/null
-
 nproc_per_gpu=32
 nnodes=1
 ngpu_per_node=2
@@ -17,7 +13,7 @@ total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
 # Zhizhou: I cannot set mini batch size to 64, that is too large. Need set it small.
 # mini_batch_size=$(( total_procs ))
 
-LR=1e-3
+LR=1e-6
 
 WANDB_PROJECT=grpo-gsm8k
 WANDB_EXP=qwen2.5-0.5b-pissa32-lr${LR}
@@ -40,7 +36,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.path=$MODEL_PATH  \
     actor_rollout_ref.model.use_shm=True  \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \
-    actor_rollout_ref.model.lora_init=pissa_niter_4 \
+    actor_rollout_ref.model.lora_init=pissa \
     actor_rollout_ref.model.lora_rank=32 \
     actor_rollout_ref.model.lora_alpha=32 \
     actor_rollout_ref.model.target_modules=all-linear \

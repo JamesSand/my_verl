@@ -8,6 +8,10 @@ set -x
 
 export CUDA_VISIBLE_DEVICES=0,1
 
+# pending for PID finish
+WAIT_PID=2530058
+tail --pid=$WAIT_PID -f /dev/null
+
 nproc_per_gpu=32
 nnodes=1
 ngpu_per_node=2
@@ -16,10 +20,11 @@ total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
 # Zhizhou: I cannot set mini batch size to 64, that is too large. Need set it small.
 # mini_batch_size=$(( total_procs ))
 
-LR=1e-4
+LR=1e-3
+KL_LOSS_COEF=0.0
 
 WANDB_PROJECT=grpo-gsm8k
-WANDB_EXP=qwen2.5-0.5b-lora32-lr${LR}
+WANDB_EXP=qwen2.5-0.5b-lora32-lr${LR}-klcoef${KL_LOSS_COEF}
 MODEL_PATH=/ssd2/zhizhou/workspace/verl/models/Qwen2.5-0.5B-Instruct
 
 BASE_DIR=/ssd2/zhizhou/workspace/verl
@@ -46,7 +51,7 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.ppo_mini_batch_size=64 \
     actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.use_kl_loss=True \
-    actor_rollout_ref.actor.kl_loss_coef=0.001 \
+    actor_rollout_ref.actor.kl_loss_coef=${KL_LOSS_COEF} \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.actor.fsdp_config.fsdp_size=-1 \
     actor_rollout_ref.model.enable_gradient_checkpointing=True \

@@ -265,7 +265,7 @@ class BaseModelMerger(ABC):
         lora_rank = min(lora_params[lora_key].shape[0], lora_params[lora_key].shape[1])
         peft_dict = {
             "r": lora_rank,
-            "lora_alpha": 0,  # lora_alpha is not set. An error should be raised to inform the user to set it manually.
+            "lora_alpha": 32,  # Zhizhou: I manually set it to 32, align with our training setting. # lora_alpha is not set. An error should be raised to inform the user to set it manually.
             "target_modules": list(target_modules),
         }
         peft_config = peft.LoraConfig(**peft_dict).to_dict()

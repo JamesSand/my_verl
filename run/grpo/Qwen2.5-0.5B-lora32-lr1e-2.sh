@@ -9,7 +9,7 @@ set -x
 export CUDA_VISIBLE_DEVICES=0,1
 
 # pending for PID finish
-WAIT_PID=1556398
+WAIT_PID=2717907
 tail --pid=$WAIT_PID -f /dev/null
 
 nproc_per_gpu=32
@@ -20,7 +20,7 @@ total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
 # Zhizhou: I cannot set mini batch size to 64, that is too large. Need set it small.
 # mini_batch_size=$(( total_procs ))
 
-LR=1e-3
+LR=1e-2
 
 WANDB_PROJECT=grpo-gsm8k
 WANDB_EXP=qwen2.5-0.5b-lora32-lr${LR}
