@@ -1,7 +1,8 @@
 
 from huggingface_hub import snapshot_download
 
-model_name = "Qwen/Qwen3-8B-Base"
+# model_name = "Qwen/Qwen3-8B-Base"
+model_name = "Qwen/Qwen2.5-0.5B-Instruct"
 
 local_dir = snapshot_download(
     repo_id=model_name,
