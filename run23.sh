@@ -1,4 +1,6 @@
 
-bash run/grpo/Qwen2.5-0.5B-pissa-bottom32-biasneg10-lr1e-4-klcoef0.0.sh
-bash run/grpo/Qwen2.5-0.5B-pissa-bottom32-biasneg20-lr1e-4-klcoef0.0.sh
-bash run/grpo/Qwen2.5-0.5B-pissa-bottom32-biasneg30-lr1e-4-klcoef0.0.sh
+# set -ex
+
+bash run/focal/Qwen2.5-0.5B-gsm8k-lora32-lr5e-6.sh
+bash run/focal/Qwen2.5-0.5B-gsm8k-lora32-lr1e-6.sh
+
