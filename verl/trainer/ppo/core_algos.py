@@ -298,6 +298,7 @@ def compute_grpo_outcome_advantage(
         Returns: `(torch.Tensor)`
             shape is (bs, response_length)
     """
+    # scores shape is (bs,)
     scores = token_level_rewards.sum(dim=-1)
 
     id2score = defaultdict(list)
@@ -306,6 +307,7 @@ def compute_grpo_outcome_advantage(
 
     with torch.no_grad():
         bsz = scores.shape[0]
+        # init question id to score dict
         for i in range(bsz):
             id2score[index[i]].append(scores[i])
         for idx in id2score:
@@ -789,7 +791,7 @@ def agg_loss(loss_mat: torch.Tensor, loss_mask: torch.Tensor, loss_agg_mode: str
     elif loss_agg_mode == "seq-mean-token-sum":
         seq_losses = torch.sum(loss_mat * loss_mask, dim=-1)  # token-sum
         loss = torch.mean(seq_losses)  # seq-mean
-    elif loss_agg_mode == "seq-mean-token-mean":
+    elif loss_agg_mode == "seq-mean-token-mean" or loss_agg_mode == "focal-loss":
         seq_losses = torch.sum(loss_mat * loss_mask, dim=-1) / torch.sum(loss_mask, dim=-1)  # token-mean
         loss = torch.mean(seq_losses)  # seq-mean
     elif loss_agg_mode == "seq-mean-token-sum-norm":
@@ -931,7 +933,8 @@ def compute_policy_loss_vanilla(
         "The lower bound of the clip_ratio_c for dual-clip PPO should be greater than 1.0,"
         + f" but get the value: {clip_ratio_c}."
     )
-
+    
+    # negative approx kl: [micro_batch_size, response_length]
     negative_approx_kl = log_prob - old_log_prob
     # Clamp negative_approx_kl for stability
     negative_approx_kl = torch.clamp(negative_approx_kl, min=-20.0, max=20.0)
@@ -953,6 +956,8 @@ def compute_policy_loss_vanilla(
 
     pg_losses3 = -advantages * clip_ratio_c
     clip_pg_losses2 = torch.min(pg_losses3, clip_pg_losses1)
+    
+    # Zhizhou Note: the ratio of clipping lower
     pg_clipfrac_lower = verl_F.masked_mean(
         torch.gt(clip_pg_losses1, pg_losses3) * (advantages < 0).float(), response_mask
     )
@@ -964,8 +969,22 @@ def compute_policy_loss_vanilla(
         tis_imp_ratio = torch.exp(old_log_prob - rollout_log_probs)
         tis_imp_ratio = torch.clamp(tis_imp_ratio, max=config.tis_imp_ratio_cap)
         pg_losses = pg_losses * tis_imp_ratio
-
-    pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
+        
+    # print("compute pg loss vanilla")
+    # breakpoint()
+    
+    if loss_agg_mode =="focal-loss":
+        # # Step1: construct trajectory level log probs
+        traj_log_prob = verl_F.masked_mean(log_prob, response_mask, axis=-1)  # [micro_batch_size, ]
+        pg_losses = pg_losses * torch.exp(traj_log_prob.unsqueeze(-1))  # [micro_batch_size, response_length]
+        
+        pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode="seq-mean-token-mean")
+        
+        # breakpoint()
+        
+    else:
+        # orginal branch
+        pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
 
     return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower
 
