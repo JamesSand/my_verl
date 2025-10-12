@@ -19,7 +19,12 @@ data 存储在 ./data/ 目录下
 
 ### 2 Train focal
 
+由于我们使用了 math verify 所以要提前 install 一下
+
 ```bash
+# install math verify
+pip install math-verify
+
 # focal loss
 bash run/focal/Qwen2.5-0.5B-gsm8k-lora32-lr5e-5-focal-loss.sh
 
