@@ -71,6 +71,10 @@ clip_ratio_c: 3.0
 # Loss aggregation mode: "token-mean", "seq-mean-token-sum", or "seq-mean-token-mean"
 loss_agg_mode: token-mean
 
+focal_gamma: 2.0
+focal_beta_pos: 1.0
+focal_beta_neg: 1.0
+
 # Entropy regularization coefficient in PPO loss
 entropy_coeff: 0
 

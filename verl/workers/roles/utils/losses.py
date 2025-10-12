@@ -64,7 +64,7 @@ def ppo_loss(config: ActorConfig, model_output, data: TensorDict, dp_group=None)
     loss_mode = config.policy_loss.get("loss_mode", "vanilla")
 
     policy_loss_fn = get_policy_loss_fn(loss_mode)
-    pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower = policy_loss_fn(
+    pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower, alpha_dict = policy_loss_fn(
         old_log_prob=old_log_prob,
         log_prob=log_prob,
         advantages=advantages,
@@ -81,6 +81,10 @@ def ppo_loss(config: ActorConfig, model_output, data: TensorDict, dp_group=None)
             "pg_clipfrac_lower": pg_clipfrac_lower.detach().item(),
         }
     )
+    
+    if loss_agg_mode == "focal-loss" and alpha_dict is not None:
+        metrics.update(alpha_dict)
+    
     policy_loss = pg_loss
 
     # add entropy loss

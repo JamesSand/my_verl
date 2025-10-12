@@ -105,6 +105,9 @@ class ActorConfig(BaseConfig):
     policy_loss: PolicyLossConfig = field(default_factory=PolicyLossConfig)
     clip_ratio_c: float = 3.0
     loss_agg_mode: str = "token-mean"
+    focal_gamma: float = 2.0
+    focal_beta_pos: float = 1.0
+    focal_beta_neg: float = 1.0
     entropy_coeff: float = 0
     tis_imp_ratio_cap: float = -1
     use_kl_loss: bool = False

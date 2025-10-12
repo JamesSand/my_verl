@@ -28,7 +28,11 @@ model_basename=$(basename $MODEL_PATH)
 
 train_dataset=gsm8k
 
-actor_loss_agg_method=seq-mean-token-mean
+actor_loss_agg_mode=focal-loss
+
+focal_gamma=2.0
+focal_beta_pos=1.0
+focal_beta_neg=1.0
 
 WANDB_PROJECT=focal-${model_basename}
 WANDB_EXP=debug
@@ -55,13 +59,16 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.model.target_modules=all-linear \
     actor_rollout_ref.actor.optim.lr=${learning_rate} \
     actor_rollout_ref.model.use_remove_padding=True \
+    actor_rollout_ref.actor.loss_agg_mode=${actor_loss_agg_mode} \
+    actor_rollout_ref.actor.focal_gamma=${focal_gamma} \
+    actor_rollout_ref.actor.focal_beta_pos=${focal_beta_pos} \
+    actor_rollout_ref.actor.focal_beta_neg=${focal_beta_neg} \
     actor_rollout_ref.actor.ppo_mini_batch_size=64 \
-    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.actor.use_kl_loss=True \
     actor_rollout_ref.actor.kl_loss_coef=${kl_coef} \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.actor.fsdp_config.fsdp_size=-1 \
-    actor_rollout_ref.model.enable_gradient_checkpointing=True \
     actor_rollout_ref.actor.fsdp_config.param_offload=True \
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
