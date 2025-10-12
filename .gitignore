@@ -141,3 +141,5 @@ logs
 log
 outputs
 .history
+
+!Qwen2.5-0.5B-Instruct-xiongdataset-lora32-lr5e-5-kl0.0-focal-loss-gamma2.0-beta_pos1.0-beta_neg1.0.log
