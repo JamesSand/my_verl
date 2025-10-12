@@ -26,28 +26,49 @@ lora_alpha=32
 MODEL_PATH=/ssd2/zhizhou/workspace/verl/models/Qwen2.5-0.5B-Instruct
 model_basename=$(basename $MODEL_PATH)
 
-train_dataset=gsm8k
+train_files="[data/weqweasdas_from_default_filtered_openr1/train_0_10000.parquet]"
+val_files="[data/weqweasdas_olympiadbench/test.parquet,data/weqweasdas_math500/test.parquet,data/weqweasdas_aime_hmmt_brumo_cmimc_amc23/test.parquet]"
 
+
+# focal loss settings
 actor_loss_agg_mode=focal-loss
-
 focal_gamma=2.0
 focal_beta_pos=1.0
 focal_beta_neg=1.0
 
+# input output settings
+max_prompt_length=$((1024 * 1))
+max_response_length=$((2048))
+max_model_length=$((max_prompt_length + max_response_length))
+
+offload=False
+
 WANDB_PROJECT=focal-${model_basename}
 # WANDB_EXP=debug
-WANDB_EXP=${model_basename}-${train_dataset}-lora${lora_rank}-lr${learning_rate}-kl${kl_coef}-${actor_loss_agg_mode}-gamma${focal_gamma}-beta_pos${focal_beta_pos}-beta_neg${focal_beta_neg}
+
+# 公共前缀（不含 focal 专属参数）
+base_exp="${model_basename}-xiongdataset-lora${lora_rank}-lr${learning_rate}-kl${kl_coef}-${actor_loss_agg_mode}"
+
+# 只有 focal-loss 才追加 gamma/beta
+if [[ "${actor_loss_agg_mode}" == "focal-loss" ]]; then
+  WANDB_EXP="${base_exp}-gamma${focal_gamma}-beta_pos${focal_beta_pos}-beta_neg${focal_beta_neg}"
+else
+  WANDB_EXP="${base_exp}"
+fi
+
+
+# WANDB_EXP=${model_basename}-xiongdataset-lora${lora_rank}-lr${learning_rate}-kl${kl_coef}-${actor_loss_agg_mode}-gamma${focal_gamma}-beta_pos${focal_beta_pos}-beta_neg${focal_beta_neg}
 
 BASE_DIR=/ssd2/zhizhou/workspace/verl
 
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
-    data.train_files=$BASE_DIR/data/${train_dataset}/train.parquet \
-    data.val_files="['$BASE_DIR/data/gsm8k/test.parquet', '$BASE_DIR/data/math/test.parquet']" \
+    data.train_files=$train_files \
+    data.val_files=$val_files \
     data.train_batch_size=${total_procs} \
     data.val_batch_size=${total_procs} \
-    data.max_prompt_length=512 \
-    data.max_response_length=1024 \
+    data.max_prompt_length=${max_prompt_length} \
+    data.max_response_length=${max_response_length} \
     data.filter_overlong_prompts=True \
     data.truncation='error' \
     data.shuffle=False \
@@ -69,24 +90,24 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.kl_loss_coef=${kl_coef} \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
     actor_rollout_ref.actor.fsdp_config.fsdp_size=-1 \
-    actor_rollout_ref.actor.fsdp_config.param_offload=True \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=True \
+    actor_rollout_ref.actor.fsdp_config.param_offload=${offload} \
+    actor_rollout_ref.actor.fsdp_config.optimizer_offload=${offload} \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.6 \
     actor_rollout_ref.rollout.n=5 \
     actor_rollout_ref.rollout.max_num_seqs=512 \
-    actor_rollout_ref.rollout.max_model_len=1536 \
-    actor_rollout_ref.rollout.max_num_batched_tokens=1536 \
+    actor_rollout_ref.rollout.max_model_len=${max_model_length} \
+    actor_rollout_ref.rollout.max_num_batched_tokens=${max_model_length} \
     actor_rollout_ref.rollout.enable_chunked_prefill=False \
     actor_rollout_ref.rollout.load_format=safetensors \
     actor_rollout_ref.rollout.layered_summon=True \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
     actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.ulysses_sequence_parallel_size=1 \
-    actor_rollout_ref.actor.entropy_coeff=0.001 \
-    algorithm.kl_ctrl.kl_coef=0.001 \
+    actor_rollout_ref.actor.entropy_coeff=0.0 \
+    algorithm.kl_ctrl.kl_coef=0.0 \
     algorithm.use_kl_in_reward=False \
     trainer.critic_warmup=0 \
     trainer.logger=['console','wandb'] \

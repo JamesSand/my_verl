@@ -10,7 +10,7 @@ set -x
 
 # export CUDA_VISIBLE_DEVICES=0,1
 
-nproc_per_gpu=32
+nproc_per_gpu=16
 nnodes=1
 ngpu_per_node=2
 total_procs=$(( nproc_per_gpu * nnodes * ngpu_per_node ))
@@ -26,7 +26,10 @@ lora_alpha=32
 MODEL_PATH=/ssd2/zhizhou/workspace/verl/models/Qwen2.5-0.5B-Instruct
 model_basename=$(basename $MODEL_PATH)
 
-train_dataset=gsm8k
+# train_dataset=gsm8k
+
+train_files="[data/weqweasdas_from_default_filtered_openr1/train_0_10000.parquet]"
+val_files="[data/weqweasdas_olympiadbench/test.parquet,data/weqweasdas_math500/test.parquet,data/weqweasdas_aime_hmmt_brumo_cmimc_amc23/test.parquet]"
 
 actor_loss_agg_mode=focal-loss
 
@@ -42,8 +45,8 @@ BASE_DIR=/ssd2/zhizhou/workspace/verl
 
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
-    data.train_files=$BASE_DIR/data/${train_dataset}/train.parquet \
-    data.val_files="['$BASE_DIR/data/gsm8k/test.parquet', '$BASE_DIR/data/math/test.parquet']" \
+    data.train_files=$train_files \
+    data.val_files=$val_files \
     data.train_batch_size=${total_procs} \
     data.val_batch_size=${total_procs} \
     data.max_prompt_length=512 \
@@ -63,8 +66,8 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.actor.focal_gamma=${focal_gamma} \
     actor_rollout_ref.actor.focal_beta_pos=${focal_beta_pos} \
     actor_rollout_ref.actor.focal_beta_neg=${focal_beta_neg} \
-    actor_rollout_ref.actor.ppo_mini_batch_size=64 \
-    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 \
+    actor_rollout_ref.actor.ppo_mini_batch_size=16 \
+    actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=4 \
     actor_rollout_ref.actor.use_kl_loss=True \
     actor_rollout_ref.actor.kl_loss_coef=${kl_coef} \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
@@ -74,8 +77,8 @@ python3 -m verl.trainer.main_ppo \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=2 \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
-    actor_rollout_ref.rollout.n=5 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.2 \
+    actor_rollout_ref.rollout.n=4 \
     actor_rollout_ref.rollout.max_num_seqs=512 \
     actor_rollout_ref.rollout.max_model_len=1536 \
     actor_rollout_ref.rollout.max_num_batched_tokens=1536 \
