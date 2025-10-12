@@ -82,7 +82,8 @@ def ppo_loss(config: ActorConfig, model_output, data: TensorDict, dp_group=None)
         }
     )
     
-    if loss_agg_mode == "focal-loss" and alpha_dict is not None:
+    # if loss_agg_mode == "focal-loss" and alpha_dict is not None:
+    if alpha_dict is not None:
         metrics.update(alpha_dict)
     
     policy_loss = pg_loss

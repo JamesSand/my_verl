@@ -986,77 +986,71 @@ def compute_policy_loss_vanilla(
     # print("compute pg loss vanilla")
     # breakpoint()
     
+    
+    # # # Step1: construct trajectory level log probs
+    
+    # ----- hyperparams (with sane defaults) -----
+    gamma = getattr(config, "focal_gamma", 2.0)
+    beta_pos = getattr(config, "focal_beta_pos", 1.0)  # β1
+    beta_neg = getattr(config, "focal_beta_neg", 1.0)  # β0
+    eps = 1e-6
+
+    # 1) 序列级几何平均 token 概率：P(y_i) = exp( mean_t log πθ )
+    # shape: [B]
+    traj_log_prob = verl_F.masked_mean(log_prob, response_mask, axis=-1)
+    # P = torch.exp(traj_log_prob).clamp_(eps, 1 - eps)   # 数值稳定
+    P = torch.exp(traj_log_prob)
+
+    # 2) 序列级优势（outcome-based 时各 token 相同；一般情况下做一次 mask-mean 聚合）
+    # shape: [B]
+    adv_seq = verl_F.masked_mean(advantages, response_mask, axis=-1)
+
+    # 3) focal 权重 α_i（与截图中的分段一致）并 stopgrad
+    #   A>0  => α_i = β1 * (1 - P)^\gamma
+    #   A<0  => α_i = β0 * P^\gamma
+    alpha_i = torch.where(
+        adv_seq > 0,
+        beta_pos * (1.0 - P).pow(gamma),
+        beta_neg * P.pow(gamma),
+    ).detach()  # stopgrad(alpha_i)
+    
+    # Zhizhou: I need to compute alpha_i statistics here
+    pos_mask = adv_seq > 0
+    neg_mask = adv_seq < 0
+    
+    # --- overall (包含所有样本，不区分 A 的符号) ---
+    overall_mean, overall_std, overall_max, overall_min = safe_stats(alpha_i, device=alpha_i.device)
+
+    # --- positive subset (A>0) ---
+    alpha_pos = alpha_i[pos_mask]
+    pos_mean, pos_std, pos_max, pos_min = safe_stats(alpha_pos, device=alpha_pos.device)
+    num_pos = int(pos_mask.sum().item())
+
+    # --- negative subset (A<0) ---
+    alpha_neg = alpha_i[neg_mask]
+    neg_mean, neg_std, neg_max, neg_min = safe_stats(alpha_neg, device=alpha_neg.device)
+    num_neg = int(neg_mask.sum().item())
+    
+    # change all to item please
+    alpha_dict = {
+        "alpha/overall_mean": overall_mean.item(),
+        "alpha/overall_std": overall_std.item(),
+        "alpha/overall_max": overall_max.item(),
+        "alpha/overall_min": overall_min.item(),
+        "alpha/positive_mean": pos_mean.item(),
+        "alpha/positive_std": pos_std.item(),
+        "alpha/positive_max": pos_max.item(),
+        "alpha/positive_min": pos_min.item(),
+        "alpha/positive_count": num_pos,
+        "alpha/negative_mean": neg_mean.item(),
+        "alpha/negative_std": neg_std.item(),
+        "alpha/negative_max": neg_max.item(),
+        "alpha/negative_min": neg_min.item(),
+        "alpha/negative_count": num_neg,
+    }
+        
     if loss_agg_mode =="focal-loss":
-        # # # Step1: construct trajectory level log probs
-        # traj_log_prob = verl_F.masked_mean(log_prob, response_mask, axis=-1)  # [micro_batch_size, ]
-        # pg_losses = pg_losses * torch.exp(traj_log_prob.unsqueeze(-1))  # [micro_batch_size, response_length]
-        
-        # pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode="seq-mean-token-mean")
-        
-        # # breakpoint()
-        
-        # ----- hyperparams (with sane defaults) -----
-        gamma = getattr(config, "focal_gamma", 2.0)
-        beta_pos = getattr(config, "focal_beta_pos", 1.0)  # β1
-        beta_neg = getattr(config, "focal_beta_neg", 1.0)  # β0
-        eps = 1e-6
-
-        # 1) 序列级几何平均 token 概率：P(y_i) = exp( mean_t log πθ )
-        # shape: [B]
-        traj_log_prob = verl_F.masked_mean(log_prob, response_mask, axis=-1)
-        # P = torch.exp(traj_log_prob).clamp_(eps, 1 - eps)   # 数值稳定
-        P = torch.exp(traj_log_prob)
-
-        # 2) 序列级优势（outcome-based 时各 token 相同；一般情况下做一次 mask-mean 聚合）
-        # shape: [B]
-        adv_seq = verl_F.masked_mean(advantages, response_mask, axis=-1)
-
-        # 3) focal 权重 α_i（与截图中的分段一致）并 stopgrad
-        #   A>0  => α_i = β1 * (1 - P)^\gamma
-        #   A<0  => α_i = β0 * P^\gamma
-        alpha_i = torch.where(
-            adv_seq > 0,
-            beta_pos * (1.0 - P).pow(gamma),
-            beta_neg * P.pow(gamma),
-        ).detach()  # stopgrad(alpha_i)
-        
-        # Zhizhou: I need to compute alpha_i statistics here
-        pos_mask = adv_seq > 0
-        neg_mask = adv_seq < 0
-        
-        # --- overall (包含所有样本，不区分 A 的符号) ---
-        overall_mean, overall_std, overall_max, overall_min = safe_stats(alpha_i, device=alpha_i.device)
-
-        # --- positive subset (A>0) ---
-        alpha_pos = alpha_i[pos_mask]
-        pos_mean, pos_std, pos_max, pos_min = safe_stats(alpha_pos, device=alpha_pos.device)
-        num_pos = int(pos_mask.sum().item())
-
-        # --- negative subset (A<0) ---
-        alpha_neg = alpha_i[neg_mask]
-        neg_mean, neg_std, neg_max, neg_min = safe_stats(alpha_neg, device=alpha_neg.device)
-        num_neg = int(neg_mask.sum().item())
-        
-        # change all to item please
-        alpha_dict = {
-            "alpha/overall_mean": overall_mean.item(),
-            "alpha/overall_std": overall_std.item(),
-            "alpha/overall_max": overall_max.item(),
-            "alpha/overall_min": overall_min.item(),
-            "alpha/positive_mean": pos_mean.item(),
-            "alpha/positive_std": pos_std.item(),
-            "alpha/positive_max": pos_max.item(),
-            "alpha/positive_min": pos_min.item(),
-            "alpha/positive_count": num_pos,
-            "alpha/negative_mean": neg_mean.item(),
-            "alpha/negative_std": neg_std.item(),
-            "alpha/negative_max": neg_max.item(),
-            "alpha/negative_min": neg_min.item(),
-            "alpha/negative_count": num_neg,
-        }
-        
-        # breakpoint()
-        
+        # Zhizhou: I move the branch to here, since we need to log the alpha dic when is not focal loss
 
         # Zhizhou: scale it here
         alpha_i = alpha_i / (alpha_i.mean().clamp_min(eps))
@@ -1075,7 +1069,7 @@ def compute_policy_loss_vanilla(
         # orginal branch
         pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
 
-    return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower, alpha_dict if loss_agg_mode=="focal-loss" else None
+    return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower, alpha_dict
 
 
 @register_policy_loss("gspo")

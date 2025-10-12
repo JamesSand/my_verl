@@ -487,9 +487,9 @@ class DataParallelPPOActor(BasePPOActor):
                         }
                     )
                     
-                    # Zhizhou: if focal-loss, then add statistics for alpha
-                    if loss_agg_mode == "focal-loss":
-                        micro_batch_metrics.update(alpha_dict)
+                    # # Zhizhou: if focal-loss, then add statistics for alpha
+                    # if loss_agg_mode == "focal-loss":
+                    micro_batch_metrics.update(alpha_dict)
                     
                     append_to_dict(metrics, micro_batch_metrics)
 
