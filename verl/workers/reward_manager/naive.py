@@ -43,7 +43,7 @@ class NaiveRewardManager(AbstractRewardManager):
         self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
         # self.compute_score = compute_score or default_compute_score
         self.compute_score = parallel_compute_score  # Use the parallel version for efficiency
-        self.num_processes = 32  # Default
+        self.num_processes = 8  # Default
         self.reward_fn_key = reward_fn_key  # Store the key for accessing the data source
 
     def __call__(self, data: DataProto, return_dict: bool = False) -> torch.Tensor | dict[str, Any]:
